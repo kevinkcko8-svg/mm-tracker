@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '23 * * * *'
   workflow_dispatch:
+    inputs:
+      sample_rivals:
+        description: 'Also collect rivals on this manual run'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: write
   issues: write
@@ -23,6 +29,7 @@ jobs:
         env:
           HYPIXEL_API_KEY: ${{ secrets.HYPIXEL_API_KEY }}
           MC_PLAYER: Even_is_Even
+          FORCE_RIVAL_SAMPLE: ${{ inputs.sample_rivals || 'false' }}
       - name: Open crossover issues
         env:
           GH_TOKEN: ${{ github.token }}
