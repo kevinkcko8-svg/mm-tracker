@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Murder Mystery · Rival Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root{font-family:system-ui,"Noto Sans TC",sans-serif;color:#eaf0ff;background:#0c1120;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}main{max-width:1170px;margin:auto;padding:42px 22px 90px}
+header{display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap}
+.eyebrow{color:#7aa7ff;font-size:12px;text-transform:uppercase;letter-spacing:.19em;font-weight:700}
+h1{font-size:clamp(29px,5vw,51px);line-height:1.1;letter-spacing:-.05em;margin:10px 0}h2{font-size:19px;margin:0 0 16px}
+.sub,.muted{color:#94a4c0}.sub{font-size:14px;max-width:700px;line-height:1.8}
+a{color:#a9c5ff;text-decoration:none}a:hover{text-decoration:underline}
+.action{border:1px solid #344568;border-radius:12px;padding:11px 15px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:28px 0}
+.card,.panel{background:#151d32;border:1px solid #283550;border-radius:17px;padding:21px}
+.stat-title{font-size:12px;color:#9baeca}.stat-number{font-size:clamp(24px,3vw,36px);font-weight:750;letter-spacing:-.03em;margin-top:8px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:17px}.panel{margin-bottom:17px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
+select{background:#202b45;border:1px solid #435372;border-radius:9px;color:#eaf0ff;padding:10px}
+.chart{height:350px;position:relative}table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;border-bottom:1px solid #2d3a56;padding:12px 7px}
+th{color:#9baeca;font-weight:500;font-size:12px}td.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{border-radius:20px;background:#20304b;color:#b7cbec;padding:5px 10px;font-size:11px}
+.notice{margin-top:14px;font-size:13px;line-height:1.7;color:#9baeca}
+footer{margin-top:25px;font-size:12px;color:#8b9bb7}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.chart{height:300px}}
+</style></head>
+<body><main>
+<header><div><div class="eyebrow">Hypixel / Murder Mystery</div><h1>Rival Tracker<span style="color:#7aa7ff">.</span></h1><div class="sub">Even_is_Even 每小時記錄 · Anatellia、Sam、cinnmn 每六小時記錄<br>每 24 小時勝場增量比較，超車時以 GitHub Issue 提醒。</div></div>
+<a class="action" href="https://github.com/kevinkcko8-svg/mm-tracker/issues" target="_blank">↗ 超車通知 Issues</a></header>
+<section class="stats"><div class="card"><div class="stat-title">我的總勝場</div><div id="wins" class="stat-number">—</div></div>
+<div class="card"><div class="stat-title">我的總擊殺</div><div id="kills" class="stat-number">—</div></div>
+<div class="card"><div class="stat-title">我的總遊戲場數</div><div id="games" class="stat-number">—</div></div>
+<div class="card"><div class="stat-title">我的最近 24 小時勝場增量</div><div id="gain" class="stat-number">—</div></div></section>
+<div class="grid"><section class="panel"><h2>玩家成長比較</h2><div class="controls">
+<select id="metric"><option value="wins">勝場 Wins</option><option value="kills">擊殺 Kills</option><option value="games_played">場次 Games</option><option value="deaths">死亡 Deaths</option><option value="coins">Coins</option></select>
+<select id="window"><option value="24">最近 24 小時</option><option value="168" selected>最近 7 天</option><option value="720">最近 30 天</option><option value="0">全部歷史</option></select>
+<select id="mode"><option value="growth">區間內增量</option><option value="total">累積總數</option></select>
+</div><div class="chart"><canvas id="mainChart"></canvas></div>
+<div class="notice">增量圖以該時間區間內的第一筆實際觀測為起點；不同玩家的首筆紀錄時間可能不同。尚未採樣的時間不會補造數據。</div></section>
+<section class="panel"><h2>最近 24 小時勝場競賽</h2><table><thead><tr><th>玩家</th><th style="text-align:right">24h 增量</th></tr></thead><tbody id="leaderboard"><tr><td colspan="2">載入中…</td></tr></tbody></table>
+<div id="state" class="notice"></div><div class="notice">對手資料每 6 小時更新。需要至少兩筆相隔約 24 小時的資料才能比較；數據可能延遲。</div></section></div>
+<section class="panel"><h2>每位玩家最後觀測時間</h2><div id="updated" class="muted">載入中…</div></section>
+<footer>使用 Hypixel 官方 API 由 GitHub Actions 定期收集。這不是即時對戰數據，也不是 25Karma 官方服務。<span id="error"></span></footer>
+</main>
+<script>
+const names=['Even_is_Even','Anatellia','Sam','cinnmn'];
+const palette=['#70b5ff','#ffaf65','#b38bff','#5bd2ae'];
+const fmt=v=>v==null?'—':new Intl.NumberFormat('en-US').format(v);
+const toDate=s=>new Date(s).getTime();
+function csv(t){const lines=t.trim().split(/\r?\n/);if(lines.length<2)return [];const keys=lines.shift().split(',');return lines.filter(Boolean).map(l=>Object.fromEntries(l.split(',').map((v,i)=>[keys[i],v])));}
+async function get(file){const r=await fetch(file+'?v='+Date.now(),{cache:'no-store'});if(r.status===404)return [];if(!r.ok)throw Error(file+': HTTP '+r.status);return csv(await r.text());}
+let series={},chart;
+function gain24(rows,now=Date.now()){if(!rows.length)return null;const last=rows.filter(r=>toDate(r.timestamp_utc)<=now).at(-1);if(!last||now-toDate(last.timestamp_utc)>2*3600000)return null;
+const target=toDate(last.timestamp_utc)-24*3600000;
+const previous=rows.reduce((best,r)=>!best||Math.abs(toDate(r.timestamp_utc)-target)<Math.abs(toDate(best.timestamp_utc)-target)?r:best,null);
+if(!previous||Math.abs(toDate(previous.timestamp_utc)-target)>2*3600000)return null;
+return Number(last.wins)-Number(previous.wins);}
+function draw(){const metric=document.querySelector('#metric').value;const hours=Number(document.querySelector('#window').value);const mode=document.querySelector('#mode').value;
+const end=Date.now();const begin=hours?end-hours*3600000:-Infinity;
+const datasets=names.map((name,i)=>{const rows=(series[name]||[]).filter(r=>toDate(r.timestamp_utc)>=begin&&r[metric]!=='');
+const base=rows.length?Number(rows[0][metric]):0;return {label:name,data:rows.map(r=>({x:toDate(r.timestamp_utc),y:Number(r[metric])-(mode==='growth'?base:0)})),borderColor:palette[i],backgroundColor:palette[i],borderWidth:i?2:3,pointRadius:2,tension:.15,spanGaps:false};});
+if(chart)chart.destroy();
+chart=new Chart(document.querySelector('#mainChart'),{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{legend:{labels:{color:'#c5d3ed'}}},scales:{x:{type:'linear',ticks:{color:'#9baeca',callback:v=>new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'numeric',day:'numeric',hour:'2-digit'})},grid:{color:'#27334d'}},y:{ticks:{color:'#9baeca'},grid:{color:'#27334d'}}}}});}
+async function init(){try{
+const [mine,rivals]=await Promise.all([get('data/history.csv'),get('data/rivals.csv')]);
+series=Object.fromEntries(names.map(n=>[n,[]]));series.Even_is_Even=mine;
+for(const row of rivals)if(series[row.player])series[row.player].push(row);
+for(const n of names)series[n].sort((a,b)=>toDate(a.timestamp_utc)-toDate(b.timestamp_utc));
+const last=mine.at(-1)||{};
+document.querySelector('#wins').textContent=fmt(last.wins?Number(last.wins):null);
+document.querySelector('#kills').textContent=fmt(last.kills?Number(last.kills):null);
+document.querySelector('#games').textContent=fmt(last.games_played?Number(last.games_played):null);
+const myGain=gain24(mine);document.querySelector('#gain').textContent=myGain==null?'待收集':('+'+fmt(myGain));
+document.querySelector('#leaderboard').innerHTML=names.map((n,i)=>{const g=gain24(series[n]);return '<tr><td><span style="color:'+palette[i]+'">●</span> '+n+'</td><td class="num">'+(g==null?'待收集':'+'+fmt(g))+'</td></tr>';}).join('');
+const overtakes=names.slice(1).filter(n=>gain24(series[n])!=null&&myGain!=null&&gain24(series[n])>myGain);
+document.querySelector('#state').textContent=overtakes.length?'目前 24h 勝場增量領先你的對手：'+overtakes.join('、'):'尚未偵測到超越（或數據不足）。';
+document.querySelector('#updated').innerHTML=names.map(n=>'<p>'+n+'：'+(series[n].length?new Date(toDate(series[n].at(-1).timestamp_utc)).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無紀錄')+'</p>').join('');
+draw();
+}catch(e){document.querySelector('#error').textContent=' 無法載入數據：'+e.message;console.error(e);}}
+for(const id of ['metric','window','mode'])document.querySelector('#'+id).addEventListener('change',()=>chart&&draw());
+init();
+</script></body></html>
