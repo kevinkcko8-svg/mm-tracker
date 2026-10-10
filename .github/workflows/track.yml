@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  issues: write
 concurrency:
   group: murder-mystery-tracker
   cancel-in-progress: false
@@ -17,13 +18,34 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: python track.py
+      - name: Record stats and detect crossovers
+        run: python track.py
         env:
           HYPIXEL_API_KEY: ${{ secrets.HYPIXEL_API_KEY }}
           MC_PLAYER: Even_is_Even
-      - name: Save history and charts
+      - name: Open crossover issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          path = Path('data/pending_alerts.json')
+          alerts = json.loads(path.read_text()) if path.exists() else []
+          for alert in alerts:
+              title = f"[MM 超車警報] {alert['player']} 最近24小時勝場增量超過 Even_is_Even"
+              body = (f"偵測時間（UTC）：{alert['at']}\n\n"
+                      f"- {alert['player']}：+{alert['rival_gain']} 勝 / 24h\n"
+                      f"- Even_is_Even：+{alert['self_gain']} 勝 / 24h\n\n"
+                      "當增量由未超越變成超越才建立一次 Issue。"
+                      "\n\n[查看追蹤儀表板](https://kevinkcko8-svg.github.io/mm-tracker/)")
+              subprocess.run(['gh','issue','create','--title',title,'--body',body],check=True)
+          PY
+      - name: Commit history, state and charts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/history.csv totals.png changes.png
-          git diff --cached --quiet || (git commit -m "Update Murder Mystery hourly stats" && git push)
+          git add data/history.csv data/alert_state.json data/pending_alerts.json totals.png changes.png
+          if [ -f data/rivals.csv ]; then git add data/rivals.csv; fi
+          git diff --cached --quiet || (git commit -m "Update Murder Mystery tracking stats" && git push)
