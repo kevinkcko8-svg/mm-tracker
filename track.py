@@ -77,7 +77,7 @@ def main():
     own.append(record)
     save(self_path,own,["timestamp_utc",*FIELDS,*[k+"_delta" for k in FIELDS]])
     rivals=load(rival_path)
-    if now.hour%6==0 or os.getenv("GITHUB_EVENT_NAME")=="workflow_dispatch":
+    if now.hour % 6 == 0 or os.getenv("FORCE_RIVAL_SAMPLE") == "true":
         for name in RIVALS:
             try:
                 rivals.append({"timestamp_utc":stamp,"player":name,**stats(name)})
