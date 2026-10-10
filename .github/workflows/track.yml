@@ -1,7 +1,7 @@
 name: Hourly Murder Mystery stats
 on:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '23 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
