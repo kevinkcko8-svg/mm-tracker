@@ -40,6 +40,13 @@ footer{margin-top:25px;font-size:12px;color:#8b9bb7}
 <div class="notice">增量圖以該時間區間內的第一筆實際觀測為起點；不同玩家的首筆紀錄時間可能不同。尚未採樣的時間不會補造數據。</div></section>
 <section class="panel"><h2>最近 24 小時勝場競賽</h2><table><thead><tr><th>玩家</th><th style="text-align:right">24h 增量</th></tr></thead><tbody id="leaderboard"><tr><td colspan="2">載入中…</td></tr></tbody></table>
 <div id="state" class="notice"></div><div class="notice">對手資料每 6 小時更新。需要至少兩筆相隔約 24 小時的資料才能比較；數據可能延遲。</div></section></div>
+<section class="panel"><h2>Even_is_Even · 累積總量</h2>
+<div class="controls">
+<select id="selfMetric"><option value="wins">總勝場 Wins</option><option value="kills">總擊殺 Kills</option><option value="games_played">總遊戲場數 Games</option><option value="deaths">總死亡 Deaths</option><option value="coins">Coins</option></select>
+<select id="selfWindow"><option value="24">最近 24 小時</option><option value="168" selected>最近 7 天</option><option value="720">最近 30 天</option><option value="0">所有歷史</option></select>
+</div><div class="chart"><canvas id="selfChart"></canvas></div>
+<div class="notice">顯示 Hypixel API 的實際累積數值，而非從首次追蹤開始的增量。資料從第一次成功記錄開始。</div>
+</section>
 <section class="panel"><h2>每位玩家最後觀測時間</h2><div id="updated" class="muted">載入中…</div></section>
 <footer>使用 Hypixel 官方 API 由 GitHub Actions 定期收集。這不是即時對戰數據，也不是 25Karma 官方服務。<span id="error"></span></footer>
 </main>
@@ -50,7 +57,7 @@ const fmt=v=>v==null?'—':new Intl.NumberFormat('en-US').format(v);
 const toDate=s=>new Date(s).getTime();
 function csv(t){const lines=t.trim().split(/\r?\n/);if(lines.length<2)return [];const keys=lines.shift().split(',');return lines.filter(Boolean).map(l=>Object.fromEntries(l.split(',').map((v,i)=>[keys[i],v])));}
 async function get(file){const r=await fetch(file+'?v='+Date.now(),{cache:'no-store'});if(r.status===404)return [];if(!r.ok)throw Error(file+': HTTP '+r.status);return csv(await r.text());}
-let series={},chart;
+let series={},chart,selfChart;
 function gain24(rows,now=Date.now()){if(!rows.length)return null;const last=rows.filter(r=>toDate(r.timestamp_utc)<=now).at(-1);if(!last||now-toDate(last.timestamp_utc)>2*3600000)return null;
 const target=toDate(last.timestamp_utc)-24*3600000;
 const previous=rows.reduce((best,r)=>!best||Math.abs(toDate(r.timestamp_utc)-target)<Math.abs(toDate(best.timestamp_utc)-target)?r:best,null);
@@ -62,6 +69,22 @@ const datasets=names.map((name,i)=>{const rows=(series[name]||[]).filter(r=>toDa
 const base=rows.length?Number(rows[0][metric]):0;return {label:name,data:rows.map(r=>({x:toDate(r.timestamp_utc),y:Number(r[metric])-(mode==='growth'?base:0)})),borderColor:palette[i],backgroundColor:palette[i],borderWidth:i?2:3,pointRadius:2,tension:.15,spanGaps:false};});
 if(chart)chart.destroy();
 chart=new Chart(document.querySelector('#mainChart'),{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{legend:{labels:{color:'#c5d3ed'}},tooltip:{callbacks:{title:items=>items.length?new Date(items[0].parsed.x).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'（台灣時間）':'',label:ctx=>ctx.dataset.label+' · '+(mode==='growth'?'區間增量：':'累積數量：')+fmt(ctx.parsed.y)}}},scales:{x:{type:'linear',ticks:{color:'#9baeca',callback:v=>new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'numeric',day:'numeric',hour:'2-digit'})},grid:{color:'#27334d'}},y:{ticks:{color:'#9baeca'},grid:{color:'#27334d'}}}}});}
+function drawSelf(){
+const metric=document.querySelector('#selfMetric').value;
+const hours=Number(document.querySelector('#selfWindow').value);
+const cutoff=hours?Date.now()-hours*3600000:-Infinity;
+const rows=(series.Even_is_Even||[]).filter(r=>toDate(r.timestamp_utc)>=cutoff&&r[metric]!==''&&Number.isFinite(Number(r[metric])));
+const points=rows.map(r=>({x:toDate(r.timestamp_utc),y:Number(r[metric])}));
+if(selfChart)selfChart.destroy();
+selfChart=new Chart(document.querySelector('#selfChart'),{type:'line',
+data:{datasets:[{label:'Even_is_Even',data:points,borderColor:'#70b5ff',backgroundColor:'#70b5ff',borderWidth:3,pointRadius:3,tension:.15}]},
+options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},
+plugins:{legend:{labels:{color:'#c5d3ed'}},tooltip:{callbacks:{
+title:items=>items.length?new Date(items[0].parsed.x).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'（台灣時間）':'',
+label:ctx=>'累積總量：'+fmt(ctx.parsed.y)}}},
+scales:{x:{type:'linear',ticks:{color:'#9baeca',callback:v=>new Date(v).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'numeric',day:'numeric',hour:'2-digit'})},grid:{color:'#27334d'}},
+y:{ticks:{color:'#9baeca',callback:v=>fmt(v)},grid:{color:'#27334d'}}}}});
+}
 async function init(){try{
 const [mine,rivals]=await Promise.all([get('data/history.csv'),get('data/rivals.csv')]);
 series=Object.fromEntries(names.map(n=>[n,[]]));series.Even_is_Even=mine;
@@ -76,8 +99,9 @@ document.querySelector('#leaderboard').innerHTML=names.map((n,i)=>{const g=gain2
 const overtakes=names.slice(1).filter(n=>gain24(series[n])!=null&&myGain!=null&&gain24(series[n])>myGain);
 document.querySelector('#state').textContent=overtakes.length?'目前 24h 勝場增量領先你的對手：'+overtakes.join('、'):'尚未偵測到超越（或數據不足）。';
 document.querySelector('#updated').innerHTML=names.map(n=>'<p>'+n+'：'+(series[n].length?new Date(toDate(series[n].at(-1).timestamp_utc)).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無紀錄')+'</p>').join('');
-draw();
+draw();drawSelf();
 }catch(e){document.querySelector('#error').textContent=' 無法載入數據：'+e.message;console.error(e);}}
 for(const id of ['metric','window','mode'])document.querySelector('#'+id).addEventListener('change',()=>chart&&draw());
+for(const id of ['selfMetric','selfWindow'])document.querySelector('#'+id).addEventListener('change',()=>drawSelf());
 init();
 </script></body></html>
