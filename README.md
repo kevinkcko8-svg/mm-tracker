@@ -1,32 +1,22 @@
-# Even_is_Even — Murder Mystery hourly tracker
+# Murder Mystery Rival Tracker
 
-Uses the official Hypixel API (not scraping 25Karma). Records cumulative statistics once per scheduled run, as well as differences from the preceding sample.
+Player: **Even_is_Even**. Rivals: **Anatellia**, **Sam**, **cinnmn**.
 
-## GitHub setup
+## What is tracked?
+- Your cumulative Hypixel Murder Mystery wins, kills, deaths, games and coins every hour (UTC HH:17, subject to GitHub Actions scheduling delays).
+- Rival snapshots every six hours (UTC 00:17, 06:17, 12:17, 18:17); manual runs also sample rivals.
+- CSV history: `data/history.csv` and `data/rivals.csv`; **existing history is preserved**.
+- Interactive dashboard: `index.html`, showing totals / growth and the latest 24-hour wins delta.
+- GitHub Issue notifications **only when a rival switches from not leading to leading** in comparable 24-hour wins deltas. A baseline is established before any crossover alert is raised.
 
-1. Create a NEW GitHub repository (a dedicated one is recommended; don't add this to an existing Pages repo unless intended).
-2. Upload `track.py`, `requirements.txt`, and the entire `.github/workflows/track.yml` path (keep folders).
-3. Create a Hypixel Developer API key via https://developer.hypixel.net/ .
-4. In your GitHub repository choose **Settings → Secrets and variables → Actions → New repository secret**. Name it `HYPIXEL_API_KEY` and paste the key as its value. Never commit or screenshot the key.
-5. Under **Actions → Hourly Murder Mystery stats → Run workflow**, start the first collection manually.
-6. After a successful run, the repository will contain `data/history.csv`, `totals.png`, and `changes.png`. The scheduled workflow runs around minute 17 of every UTC hour, but GitHub schedules may be delayed or occasionally skipped.
+## Setup
+1. Keep existing repository secret `HYPIXEL_API_KEY` in Settings → Secrets and variables → Actions. Do not paste the key publicly.
+2. Under Actions → Hourly Murder Mystery stats → Run workflow, start one manual run to collect all rivals.
+3. Under **Settings → Pages**, choose **Deploy from a branch**, branch **main**, folder **/(root)**, then Save. Once published, the dashboard URL should be:
+   https://kevinkcko8-svg.github.io/mm-tracker/
+4. To receive emails, enable notifications for Issues in GitHub notification settings. The workflow creates Issues, but GitHub may not automatically email you unless your settings allow it.
 
-## Local run
+## How the comparison works
+For each player, compare recorded win totals approximately 24 hours apart (within a 2-hour sampling tolerance). A missing history or stale rival snapshot is **not counted as zero**. Rivals need about 24 hours of samples before full comparisons work. A rival's 24-hour gain must become **strictly greater** than yours to create a crossover Issue; ties do not qualify. Scheduled workflows may run late or be skipped. The delta is an approximation to a 24-hour window, not a guaranteed continuous real-time rate.
 
-```bash
-pip install -r requirements.txt
-# macOS / Linux:
-export HYPIXEL_API_KEY='YOUR_KEY'
-python track.py
-# Windows PowerShell:
-# $env:HYPIXEL_API_KEY='YOUR_KEY'; python track.py
-```
-
-## Output
-
-- `data/history.csv` – historical observations and changes from previous observations.
-- `totals.png` – trend of cumulative values.
-- `changes.png` – changes between snapshots, **not guaranteed to represent exactly 60 minutes** if a run is delayed/skipped.
-- Missing API fields are blank rather than guessed as zero.
-
-These metrics come from the official Hypixel API's `stats.MurderMystery`. Mode-specific or differently named fields may require adjusting `STAT_KEYS` in `track.py`. History starts on first successful run; older hourly history cannot be reconstructed from a current total. Public repositories expose the tracked statistics, so choose a private repository if desired. GitHub Actions scheduled workflows require repository automation to remain enabled; delays and occasional skipped runs can occur.
+The program uses the official Hypixel API, not 25Karma scraping. Opponent accounts with missing API data are skipped with a warning. It requires Issues to be enabled and Actions write permissions to create notification Issues.
