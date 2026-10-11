@@ -56,7 +56,7 @@ const palette=['#70b5ff','#ffaf65','#b38bff','#5bd2ae'];
 const fmt=v=>v==null?'—':new Intl.NumberFormat('en-US').format(v);
 const toDate=s=>new Date(s).getTime();
 function csv(t){const lines=t.trim().split(/\r?\n/);if(lines.length<2)return [];const keys=lines.shift().split(',');return lines.filter(Boolean).map(l=>Object.fromEntries(l.split(',').map((v,i)=>[keys[i],v])));}
-async function get(file){const r=await fetch(file+'?v='+Date.now(),{cache:'no-store'});if(r.status===404)return [];if(!r.ok)throw Error(file+': HTTP '+r.status);return csv(await r.text());}
+async function get(file){const live='https://raw.githubusercontent.com/kevinkcko8-svg/mm-tracker/main/'+file+'?v='+Date.now();const r=await fetch(live,{cache:'no-store'});if(r.status===404)return [];if(!r.ok)throw Error(file+': HTTP '+r.status);return csv(await r.text());}
 let series={},chart,selfChart;
 function gain24(rows,now=Date.now()){if(!rows.length)return null;const last=rows.filter(r=>toDate(r.timestamp_utc)<=now).at(-1);if(!last||now-toDate(last.timestamp_utc)>2*3600000)return null;
 const target=toDate(last.timestamp_utc)-24*3600000;
@@ -104,4 +104,5 @@ draw();drawSelf();
 for(const id of ['metric','window','mode'])document.querySelector('#'+id).addEventListener('change',()=>chart&&draw());
 for(const id of ['selfMetric','selfWindow'])document.querySelector('#'+id).addEventListener('change',()=>drawSelf());
 init();
+setInterval(init, 5*60*1000);
 </script></body></html>
