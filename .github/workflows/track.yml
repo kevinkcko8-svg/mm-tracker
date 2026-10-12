@@ -31,6 +31,7 @@ jobs:
           MC_PLAYER: Even_is_Even
           FORCE_RIVAL_SAMPLE: ${{ inputs.sample_rivals || 'false' }}
       - name: Open crossover issues
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
