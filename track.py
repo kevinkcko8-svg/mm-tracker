@@ -48,7 +48,7 @@ def gain24(rows,now):
     rows=[r for r in rows if r.get("wins","")!="" and ts(r)<=now]
     if not rows: return None
     end=max(rows,key=ts)
-    if now-ts(end)>timedelta(hours=2): return None
+    if now-ts(end)>timedelta(hours=8): return None
     target=ts(end)-timedelta(hours=24)
     old=min(rows,key=lambda r:abs(ts(r)-target))
     if abs(ts(old)-target)>timedelta(hours=2): return None
@@ -77,7 +77,7 @@ def main():
     own.append(record)
     save(self_path,own,["timestamp_utc",*FIELDS,*[k+"_delta" for k in FIELDS]])
     rivals=load(rival_path)
-    if now.astimezone(timezone(timedelta(hours=8))).hour % 6 == 0 or os.getenv("FORCE_RIVAL_SAMPLE") == "true":
+    if True:  # All four players are sampled on every scheduled or manual run
         for name in RIVALS:
             try:
                 rivals.append({"timestamp_utc":stamp,"player":name,**stats(name)})
