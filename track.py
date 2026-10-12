@@ -34,7 +34,15 @@ def stats(name):
     r.raise_for_status()
     r=s.get("https://api.hypixel.net/v2/player",params={"uuid":r.json()["id"]},
             headers={"API-Key":os.environ["HYPIXEL_API_KEY"]},timeout=30)
-    r.raise_for_status()
+    if not r.ok:
+        try:
+            detail = r.json().get("cause", r.text[:250])
+        except ValueError:
+            detail = r.text[:250]
+        raise RuntimeError(
+            f"Hypixel API rejected {name}: HTTP {r.status_code}; cause={detail}. "
+            "If 403, check the HYPIXEL_API_KEY repository secret and whether the key is valid."
+        )
     p=r.json()
     if not p.get("success") or not p.get("player"): raise RuntimeError(str(p.get("cause","No player")))
     d=(p["player"].get("stats") or {}).get("MurderMystery") or {}
