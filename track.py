@@ -77,14 +77,15 @@ def main():
     own.append(record)
     save(self_path,own,["timestamp_utc",*FIELDS,*[k+"_delta" for k in FIELDS]])
     rivals=load(rival_path)
-    if True:  # All four players are sampled on every scheduled or manual run
-        for name in RIVALS:
-            try:
-                rivals.append({"timestamp_utc":stamp,"player":name,**stats(name)})
-                print("Rival sampled:",name)
-            except Exception as e:
-                print("Rival unavailable:",name,str(e))
-        if rivals: save(rival_path,rivals,["timestamp_utc","player",*FIELDS])
+    # Sample rivals on every run; scheduled runs occur every six hours.
+    for name in RIVALS:
+        try:
+            rivals.append({"timestamp_utc":stamp,"player":name,**stats(name)})
+            print("Rival sampled:",name)
+        except Exception as e:
+            print("Rival unavailable:",name,str(e))
+    if rivals:
+        save(rival_path,rivals,["timestamp_utc","player",*FIELDS])
     states=json.loads(state_path.read_text()) if state_path.exists() else {}
     alerts=[]
     my_gain=gain24(own,now)
