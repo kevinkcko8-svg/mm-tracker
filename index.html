@@ -26,7 +26,7 @@ footer{margin-top:25px;font-size:12px;color:#8b9bb7}
 @media(max-width:800px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.chart{height:300px}}
 </style></head>
 <body><main>
-<header><div><div class="eyebrow">Hypixel / Murder Mystery</div><h1>Rival Tracker<span style="color:#7aa7ff">.</span></h1><div class="sub">Even_is_Even 每小時記錄 · Anatellia、Sam、cinnmn 每六小時記錄<br>每 24 小時勝場增量比較，超車時以 GitHub Issue 提醒。</div></div>
+<header><div><div class="eyebrow">Hypixel / Murder Mystery</div><h1>Rival Tracker<span style="color:#7aa7ff">.</span></h1><div class="sub">Even_is_Even、Anatellia、Sam、cinnmn 每六小時記錄<br>每 24 小時勝場增量比較，超車時以 GitHub Issue 提醒。</div></div>
 <a class="action" href="https://github.com/kevinkcko8-svg/mm-tracker/issues" target="_blank">↗ 超車通知 Issues</a></header>
 <section class="stats"><div class="card"><div class="stat-title">我的總勝場</div><div id="wins" class="stat-number">—</div></div>
 <div class="card"><div class="stat-title">我的總擊殺</div><div id="kills" class="stat-number">—</div></div>
@@ -58,7 +58,7 @@ const toDate=s=>new Date(s).getTime();
 function csv(t){const lines=t.trim().split(/\r?\n/);if(lines.length<2)return [];const keys=lines.shift().split(',');return lines.filter(Boolean).map(l=>Object.fromEntries(l.split(',').map((v,i)=>[keys[i],v])));}
 async function get(file){const live='https://raw.githubusercontent.com/kevinkcko8-svg/mm-tracker/main/'+file+'?v='+Date.now();const r=await fetch(live,{cache:'no-store'});if(r.status===404)return [];if(!r.ok)throw Error(file+': HTTP '+r.status);return csv(await r.text());}
 let series={},chart,selfChart;
-function gain24(rows,now=Date.now()){if(!rows.length)return null;const last=rows.filter(r=>toDate(r.timestamp_utc)<=now).at(-1);if(!last||now-toDate(last.timestamp_utc)>2*3600000)return null;
+function gain24(rows,now=Date.now()){if(!rows.length)return null;const last=rows.filter(r=>toDate(r.timestamp_utc)<=now).at(-1);if(!last||now-toDate(last.timestamp_utc)>8*3600000)return null;
 const target=toDate(last.timestamp_utc)-24*3600000;
 const previous=rows.reduce((best,r)=>!best||Math.abs(toDate(r.timestamp_utc)-target)<Math.abs(toDate(best.timestamp_utc)-target)?r:best,null);
 if(!previous||Math.abs(toDate(previous.timestamp_utc)-target)>2*3600000)return null;
