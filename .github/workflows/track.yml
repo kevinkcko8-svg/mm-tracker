@@ -1,11 +1,11 @@
-name: Hourly Murder Mystery stats
+name: Six-hour Murder Mystery stats
 on:
   schedule:
-    - cron: '23 * * * *'
+    - cron: '23 */6 * * *'
   workflow_dispatch:
     inputs:
       sample_rivals:
-        description: 'Also collect rivals on this manual run'
+        description: 'Collect all players (all runs now do this)'
         type: boolean
         required: false
         default: false
