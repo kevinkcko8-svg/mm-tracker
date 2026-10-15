@@ -1,7 +1,5 @@
 name: Six-hour Murder Mystery stats
 on:
-  schedule:
-    - cron: '23 */6 * * *'
   workflow_dispatch:
     inputs:
       sample_rivals:
