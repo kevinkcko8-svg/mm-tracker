@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "player": "Anatellia",
+    "self_gain": 73,
+    "rival_gain": 85,
+    "at": "2026-10-19T19:23:22+00:00"
+  },
+  {
+    "player": "Sam",
+    "self_gain": 73,
+    "rival_gain": 83,
+    "at": "2026-10-19T19:23:22+00:00"
+  }
+]
